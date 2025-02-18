@@ -24,7 +24,8 @@ const upload = multer({ storage });
 app.post("/upload", upload.single("file"), (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No file uploaded." });
 
-  const fileUrl = `http://192.168.1.66:5000/uploads/${req.file.filename}`;
+  const fileUrl = `https://qr-code-backend.onrender.com
+/uploads/${req.file.filename}`;
   console.log("✅ File uploaded:", fileUrl);
   res.json({ fileUrl }); // Return the file URL
 });
@@ -51,6 +52,7 @@ app.post("/generate", (req, res) => {
 });
 
 // ✅ Start Server
-app.listen(5000, "192.168.1.66", () =>
-  console.log("✅ Server running at http://192.168.1.66:5000")
+const PORT = process.env.PORT || 5000; // Use environment variable or default to 5000
+app.listen(PORT, () =>
+  console.log(`✅ Server running at http://localhost:${PORT}`)
 );
