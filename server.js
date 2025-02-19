@@ -2,35 +2,51 @@ const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
 const path = require("path");
-const fs = require("fs");
 const qr = require("qr-image");
+const cloudinary = require("cloudinary").v2;
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+require("dotenv").config();
 
 const app = express();
-app.use(cors({ origin: "*" })); // Allow all origins
+app.use(cors({ origin: "*" }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use("/uploads", express.static("uploads")); // ✅ Serve uploaded files
 
-// ✅ Configure file storage
-const storage = multer.diskStorage({
-  destination: "uploads/",
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname)); // Unique filename
+// ✅ Cloudinary Config (Use environment variables)
+cloudinary.config({
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.API_KEY,
+  api_secret: process.env.API_SECRET,
+});
+
+console.log("🔹 Cloudinary Config:", cloudinary.config().cloud_name);
+
+// ✅ Cloudinary Storage
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: "qr-uploads",
+    format: async () => "png",
+    public_id: () => String(Date.now()), // Ensure it's a string
   },
 });
+
 const upload = multer({ storage });
 
-// ✅ File upload endpoint
+// ✅ File Upload Endpoint
 app.post("/upload", upload.single("file"), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "No file uploaded." });
+  console.log("📩 Received file upload request");
 
-  const fileUrl = `https://qr-code-backend.onrender.com
-/uploads/${req.file.filename}`;
-  console.log("✅ File uploaded:", fileUrl);
-  res.json({ fileUrl }); // Return the file URL
+  if (!req.file) {
+    console.error("❌ No file uploaded.");
+    return res.status(400).json({ error: "No file uploaded." });
+  }
+
+  console.log("📂 Uploaded file details:", req.file);
+  res.json({ fileUrl: req.file.path }); // Cloudinary URL
 });
 
-// ✅ Generate QR Code
+// ✅ QR Code Generation Endpoint
 app.post("/generate", (req, res) => {
   const { url } = req.body;
   console.log("🔹 Received request with URL:", url);
@@ -41,18 +57,19 @@ app.post("/generate", (req, res) => {
   }
 
   try {
-    console.log("✅ Generating QR for:", url);
+    console.log(`✅ Generating QR for: ${url}`);
     const qrImage = qr.image(url, { type: "png" });
+
     res.setHeader("Content-Type", "image/png");
     qrImage.pipe(res);
   } catch (error) {
-    console.error("❌ Error generating QR code:", error);
-    res.status(500).json({ error: "Error generating QR code" });
+    console.error("❌ Error generating QR code:", error.message);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
 // ✅ Start Server
-const PORT = process.env.PORT || 5000; // Use environment variable or default to 5000
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () =>
   console.log(`✅ Server running at http://localhost:${PORT}`)
 );
