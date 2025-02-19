@@ -60,13 +60,17 @@ app.post("/generate", (req, res) => {
     console.log(`✅ Generating QR for: ${url}`);
     const qrImage = qr.image(url, { type: "png" });
 
+    // 📥 Force download in browser
     res.setHeader("Content-Type", "image/png");
+    res.setHeader("Content-Disposition", 'attachment; filename="qr_code.png"');
+
     qrImage.pipe(res);
   } catch (error) {
     console.error("❌ Error generating QR code:", error.message);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
 
 // ✅ Start Server
 const PORT = process.env.PORT || 5000;
